@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 Window.size = (360, 640)
 
+
+
 Builder.load_string('''
 <MainScreen>:
     BoxLayout:
@@ -75,6 +77,7 @@ ScreenManager:
     SettingsScreen:
         name: 'settings'
 ''')
+
 
 
 class MainScreen(Screen):
