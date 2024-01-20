@@ -15,6 +15,8 @@ from kivy.uix.image import Image as KivyImage
 import logging
 import requests
 import base64
+import sys
+import random
 import io
 from PIL import Image as PILImage
 import json
@@ -32,7 +34,13 @@ Window.size = (360, 640)
 
 
 
-Builder.load_string('''
+class MainScreen(Screen):
+    pass
+
+class SettingsScreen(Screen):
+    pass
+
+KV = '''
 <MainScreen>:
     BoxLayout:
         orientation: 'vertical'
@@ -76,15 +84,10 @@ ScreenManager:
         name: 'main'
     SettingsScreen:
         name: 'settings'
-''')
+'''
 
 
 
-class MainScreen(Screen):
-    pass
-
-class SettingsScreen(Screen):
-    pass
 
 class HaierFridgeApp(App):
     def build(self):
