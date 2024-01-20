@@ -12,8 +12,8 @@ from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
 from kivy.uix.image import Image as KivyImage
-from kivy.clock import Clock
 import logging
+import datetime
 import requests
 import base64
 import sys
@@ -21,6 +21,7 @@ import random
 import io
 from PIL import Image as PILImage
 import json
+import os
 from llama_cpp import Llama
 
 # Load configuration from config.json
@@ -32,66 +33,14 @@ logger = logging.getLogger(__name__)
 
 Window.size = (360, 640)
 
+
+
 class MainScreen(Screen):
-    pass
-
-class SettingsScreen(Screen):
-    pass
-
-KV = '''
-<MainScreen>:
-    BoxLayout:
-        orientation: 'vertical'
-        Button:
-            text: 'Go to Settings'
-            on_release: app.root.current = 'settings'
-        Button:
-            text: 'Generate Image'
-            on_release: root.generate_image()
-        Image:
-            id: img
-            source: ''
-
-<SettingsScreen>:
-    BoxLayout:
-        orientation: 'vertical'
-        TextInput:
-            id: food_input
-            hint_text: 'Enter Food Item'
-            size_hint_y: None
-            height: '48dp'
-            on_text_validate: app.schedule_async(app.add_food_item, food_input.text)
-        Button:
-            text: 'Send'
-            size_hint_y: None
-            height: '48dp'
-            on_release: app.schedule_async(app.add_food_item, food_input.text)
-        Spinner:
-            id: food_spinner
-            text: 'Select Food to Remove'
-            size_hint_y: None
-            height: '48dp'
-        Button:
-            text: 'Remove Selected Food'
-            size_hint_y: None
-            height: '48dp'
-            on_release: app.schedule_async(app.remove_food_item, food_spinner.text)
-        Button:
-            text: 'Back to Main Screen'
-            size_hint_y: None
-            height: '48dp'
-            on_release: app.root.current = 'main'
-        Image:
-            id: generated_image
-            source: ''
-'''
-
-class HaierFridgeApp(App):
-    def build(self):
-        self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.init_db())
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.llm = Llama(model_path=config['LLAMA_MODEL_PATH'], n_gpu_layers=-1, n_ctx=3900)
-        return Builder.load_string(KV)
+        self.loop = asyncio.new_event_loop()
+        self.loop.run_until_complete(self.init_db())
 
     async def init_db(self):
         try:
@@ -101,13 +50,14 @@ class HaierFridgeApp(App):
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
 
-    def schedule_async(self, coroutine, *args):
-        Clock.schedule_once(lambda dt: self.loop.create_task(coroutine(*args)))
-
-    def on_start(self):
-        self.schedule_async(self.update_food_spinner)
-        self.schedule_async(self.generate_color_code)
-
+    def generate_time_based_prompt(self):
+        now = datetime.now()
+        formatted_now = now.strftime("%Y-%m-%d %H:%M:%S")
+        prompt = f"Generate a sytable diffusion prompt depending on {formatted_now} and Random Theme here"
+        response = self.llm(prompt, max_tokens=200)
+        generated_prompt = response['choices'][0]['text'] if response['choices'] else ""
+        return generated_prompt
+    
     async def add_food_item(self, food_item):
         if food_item:
             try:
@@ -145,43 +95,21 @@ class HaierFridgeApp(App):
             response = self.llm(prompt, max_tokens=200)
             color_code = response['choices'][0]['text'] if response['choices'] else "#FFFFFF"
             logger.info(f"Generated Color Code: {color_code}")
-
-            # Generate Images based on Color Code
-            await self.generate_images(color_code)
-
-            # Apply quantum logic to color code and amplitude
-            amplitude = await self.sentiment_to_amplitude(sentence)
-            quantum_state = self.quantum_circuit(color_code, amplitude)
-
-            # Save to database
-            await self.save_to_database(color_code, quantum_state, response['choices'][0]['text'], 'spacetime_report')
-
         except Exception as e:
             logger.error(f"Error generating color code: {e}")
 
     @qml.qnode(qml.device("default.qubit", wires=4))
     def quantum_circuit(self, color_code, amplitude):
-        try:
-            r, g, b = (int(color_code[i:i+2], 16) for i in (0, 2, 4))
-            r, g, b = r / 255.0, g / 255.0, b / 255.0
-
-            # Quantum Gates for color encoding
-            qml.RY(r * np.pi, wires=0)
-            qml.RY(g * np.pi, wires=1)
-            qml.RY(b * np.pi, wires=2)
-
-            # Quantum Gate for amplitude
-            qml.RY(amplitude * np.pi, wires=3)
-
-            # Entangling gates
-            qml.CNOT(wires=[0, 1])
-            qml.CNOT(wires=[1, 2])
-            qml.CNOT(wires=[2, 3])
-
-            return qml.probs(wires=[0, 1, 2, 3])
-        except Exception as e:
-            logger.error(f"Error in quantum_circuit: {e}")
-            return np.zeros(2 ** 4)
+        r, g, b = (int(color_code[i:i+2], 16) for i in (0, 2, 4))
+        r, g, b = r / 255.0, g / 255.0, b / 255.0
+        qml.RY(r * np.pi, wires=0)
+        qml.RY(g * np.pi, wires=1)
+        qml.RY(b * np.pi, wires=2)
+        qml.RY(amplitude * np.pi, wires=3)
+        qml.CNOT(wires=[0, 1])
+        qml.CNOT(wires=[1, 2])
+        qml.CNOT(wires=[2, 3])
+        return qml.probs(wires=[0, 1, 2, 3])
 
     async def sentiment_to_amplitude(self, text):
         analysis = TextBlob(text)
@@ -212,12 +140,12 @@ class HaierFridgeApp(App):
         elif direction == 'back':
             self.root.transition.direction = 'right'
         self.root.current = screen_name
-
-    def generate_images(self, color_code):
+        
+    def generate_images(self, message):
         try:
             url = config['IMAGE_GENERATION_URL']
             payload = {
-                "color_code": color_code,
+                "prompt": message,
                 "steps": 51,
                 "seed": random.randrange(sys.maxsize),
                 "enable_hr": "false",
@@ -230,12 +158,9 @@ class HaierFridgeApp(App):
             response = requests.post(url, json=payload)
             if response.status_code == 200:
                 image_data = response.json()['images']
-                image_widget = self.root.get_screen('main').ids.img
-
                 for img_data in image_data:
                     img_tk = self.convert_base64_to_tk(img_data)
-                    image_widget.source = img_tk.source
-
+                    # Process and display the image as needed
             else:
                 logger.error(f"Error generating image: HTTP {response.status_code}")
         except Exception as e:
@@ -248,5 +173,67 @@ class HaierFridgeApp(App):
         image = PILImage.open(io.BytesIO(image_data))
         return KivyImage(source=image)
 
+    def generate_image(self):
+        message = self.generate_time_based_prompt()
+        self.loop.create_task(self.generate_images(message))        
+
+class SettingsScreen(Screen):
+    pass
+
+KV = '''
+<MainScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        Button:
+            text: 'Go to Settings'
+            on_release: app.root.current = 'settings'
+        Button:
+            text: 'Generate Image'
+            on_release: root.generate_image()
+        Image:
+            id: img
+            source: ''
+
+<SettingsScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        TextInput:
+            id: food_input
+            hint_text: 'Enter Food Item'
+            size_hint_y: None
+            height: '48dp'
+            on_text_validate: app.add_food_item(food_input.text)
+        Spinner:
+            id: food_spinner
+            text: 'Select Food to Remove'
+            size_hint_y: None
+            height: '48dp'
+        Button:
+            text: 'Remove Selected Food'
+            size_hint_y: None
+            height: '48dp'
+            on_release: app.remove_food_item(food_spinner.text)
+        Button:
+            text: 'Back to Main Screen'
+            size_hint_y: None
+            height: '48dp'
+            on_release: app.root.current = 'main'
+
+ScreenManager:
+    MainScreen:
+        name: 'main'
+    SettingsScreen:
+        name: 'settings'
+'''
+
+
+
+class MyApp(App):
+    def build(self):
+        sm = ScreenManager()
+        sm.add_widget(MainScreen(name='main'))
+        return sm
+    
+    
 if __name__ == '__main__':
-    HaierFridgeApp().run()
+    MyApp().run()    
