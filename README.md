@@ -1,4 +1,5 @@
-![image](https://github.com/graylan0/nothaier-quantum-food-ideas/assets/34530588/cbbc3898-0cb6-40de-b81f-b828f0db6488)
+
+![Screenshot from 2024-01-19 23-47-59](https://github.com/graylan0/nothaier-quantum-food-ideas/assets/34530588/578c820e-e14d-4afd-8a37-276c55e312a5)
 
 
 Task Description: The goal of this project is to design and develop a state-of-the-art refrigerator that leverages quantum technology and advanced chromography for optimizing food consumption. Specifically, the appliance should have the following features:
